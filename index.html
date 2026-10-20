@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sitzplan">
+<title>Sitzplan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F2F4F5; --panel:#FFFFFF; --ink:#1E2730; --muted:#5A6772; --line:#D3DAE0;
+  --accent:#2B4FB8; --accent-ink:#FFFFFF; --accent-soft:#E2E8F8;
+  --warn:#9A4A0C; --warn-soft:#FBEADB; --stage:#DFE5E9; --chip:#FFFFFF;
+  --font:"Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14191D; --panel:#1C232A; --ink:#E7ECEF; --muted:#9BA8B2; --line:#32404A;
+    --accent:#86A2F2; --accent-ink:#0D1530; --accent-soft:#243052;
+    --warn:#F2AE72; --warn-soft:#3A2A1C; --stage:#0F1316; --chip:#252E35;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14191D; --panel:#1C232A; --ink:#E7ECEF; --muted:#9BA8B2; --line:#32404A;
+  --accent:#86A2F2; --accent-ink:#0D1530; --accent-soft:#243052;
+  --warn:#F2AE72; --warn-soft:#3A2A1C; --stage:#0F1316; --chip:#252E35;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:16px/1.45 var(--font);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--panel)}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+.app{height:100%;display:grid;grid-template-rows:auto auto 1fr}
+.tabbar{display:flex;align-items:flex-end;gap:4px;padding:6px 12px 0;background:var(--panel);border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:thin}
+.tab{display:flex;align-items:center;border:1px solid transparent;border-bottom:0;border-radius:10px 10px 0 0;color:var(--muted);flex:none;margin-bottom:-1px}
+.tab[data-active]{background:var(--bg);border-color:var(--line);color:var(--ink);font-weight:700}
+.tab .tname{border:0;background:transparent;padding:8px 4px 8px 12px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;color:inherit;font-weight:inherit;min-height:40px}
+.tab .tclose{border:0;background:transparent;cursor:pointer;color:var(--muted);padding:4px 9px;border-radius:6px;min-height:32px;font-size:17px;line-height:1}
+.tab .tclose:hover{color:var(--ink)}
+.tab .tclose[data-armed]{background:var(--warn-soft);color:var(--warn);font-size:13px}
+.tabadd{border:1px dashed var(--line);background:transparent;border-radius:9px;padding:6px 12px;cursor:pointer;color:var(--accent);flex:none;margin:0 0 5px 6px;min-height:34px;font-weight:700}
+.newroom{margin:0 0 16px}
+.top{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:19px}
+.brand svg{width:34px;height:26px}
+.steps{display:flex;gap:4px;margin:0 auto;background:var(--bg);padding:4px;border-radius:12px}
+.steps button{border:0;background:transparent;padding:7px 14px 7px 8px;border-radius:9px;color:var(--muted);display:flex;align-items:center;gap:8px;cursor:pointer;min-height:40px}
+.steps button b{display:inline-grid;place-items:center;width:25px;height:25px;border-radius:50%;border:2px solid currentColor;font-size:13px}
+.steps button[aria-current="step"]{background:var(--panel);color:var(--ink);font-weight:700;box-shadow:0 1px 3px rgba(20,30,40,.12)}
+.steps button[aria-current="step"] b{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.actions{display:flex;gap:6px}
+
+.btn{border:1px solid var(--line);background:var(--panel);padding:8px 14px;border-radius:10px;cursor:pointer;min-height:42px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.sm{min-height:36px;padding:5px 11px;font-size:14px}
+.btn.danger[data-armed]{background:var(--warn-soft);color:var(--warn);border-color:var(--warn)}
+.wide{width:100%}
+
+.main{display:grid;grid-template-columns:330px 1fr;min-height:0}
+.panel{overflow:auto;padding:18px 18px 30px;background:var(--panel);border-right:1px solid var(--line)}
+.stage{position:relative;min-height:0;background:var(--stage);overflow:hidden}
+#plan{position:absolute;inset:0;width:100%;height:100%;touch-action:none;user-select:none;-webkit-user-select:none;overflow:visible}
+#plan text,#presentSvg text{font-family:var(--font)}
+#plan .outside{fill:var(--muted)}
+
+h2{font-size:21px;margin:0 0 14px}
+h3{font-size:15px;margin:24px 0 8px;color:var(--muted)}
+.field{display:block;margin-bottom:10px}
+.field>span{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+input[type=text],textarea{width:100%;font:inherit;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink)}
+textarea{resize:vertical;min-height:120px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px}
+.note{font-size:13px;color:var(--muted);margin:6px 0 10px}
+.next{margin-top:26px}
+
+.palette{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.pal{display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--bg);cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;text-align:left;font-size:13.5px;min-height:46px;min-width:0;overflow-wrap:anywhere}
+.pal:hover{border-color:var(--accent)}
+.pal svg{width:34px;height:24px;flex:none}
+
+.seg{display:flex;background:var(--bg);border-radius:10px;padding:3px;gap:3px;margin-bottom:10px}
+.seg button{flex:1;border:0;background:transparent;padding:8px;border-radius:8px;cursor:pointer;color:var(--muted);min-height:38px}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);font-weight:700;box-shadow:0 1px 3px rgba(20,30,40,.12)}
+.seg.big button{display:flex;flex-direction:column;align-items:center;padding:10px 6px}
+.seg small{font-weight:400;color:var(--muted);font-size:12px}
+
+.count{padding:10px 12px;border-radius:10px;background:var(--bg);font-size:14px;margin:12px 0 4px}
+.count.warn{background:var(--warn-soft);color:var(--warn)}
+.pool{display:flex;flex-wrap:wrap;align-content:flex-start;gap:6px;min-height:72px;padding:8px;border:2px dashed var(--line);border-radius:12px;margin-bottom:10px}
+.pool.over{border-color:var(--accent);background:var(--accent-soft)}
+.pool-empty{margin:4px;font-size:14px;color:var(--muted)}
+.chip{border:1px solid var(--line);background:var(--chip);border-radius:999px;padding:7px 13px;font-weight:700;font-size:15px;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.chip.sel{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.chip.dragging{opacity:.35}
+
+.ghost{position:fixed;left:0;top:0;pointer-events:none;z-index:70;padding:8px 15px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-weight:700;white-space:nowrap;box-shadow:0 8px 22px rgba(0,0,0,.25)}
+.floatbar{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:6px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px;box-shadow:0 4px 16px rgba(20,30,40,.14);z-index:3;max-width:calc(100% - 24px);flex-wrap:wrap;justify-content:center}
+.floatbar .lbl{padding:0 6px 0 8px;font-weight:700}
+.stagehint{position:absolute;left:14px;bottom:10px;right:14px;font-size:13px;color:var(--muted);pointer-events:none}
+
+.toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translate(-50%,16px);opacity:0;background:var(--ink);color:var(--panel);padding:10px 16px;border-radius:10px;transition:opacity .2s,transform .2s;pointer-events:none;z-index:80;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+dialog{border:0;border-radius:16px;padding:0;background:var(--panel);color:var(--ink);width:min(540px,94vw);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+dialog::backdrop{background:rgba(15,20,25,.45)}
+.dlg{padding:20px}
+.dlg h2{margin-bottom:12px}
+.dlg-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px}
+.prefixed{display:flex;align-items:center;border:1px solid var(--line);border-radius:9px;background:var(--bg)}
+.prefixed b{padding:0 2px 0 12px;white-space:nowrap}
+.prefixed input[type=text]{border:0;background:transparent}
+.check{display:flex;gap:9px;align-items:center;margin:9px 0;font-size:15px}
+.check input{width:20px;height:20px;accent-color:var(--accent)}
+.liblist{list-style:none;margin:0;padding:0;max-height:48vh;overflow:auto;border-top:1px solid var(--line)}
+.liblist li{display:flex;align-items:center;gap:6px;padding:10px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.liblist .nm{flex:1;min-width:140px}
+.liblist .nm b{display:block}
+.liblist .nm span{font-size:12px;color:var(--muted)}
+.liblist .empty{color:var(--muted);font-size:14px}
+
+.present{position:fixed;inset:0;background:#FFFFFF;color:#17212A;z-index:60;display:flex;flex-direction:column;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
+.present header{display:flex;align-items:center;gap:12px;padding:12px 20px;flex-wrap:wrap}
+.present h1{margin:0;font-size:clamp(20px,3vw,34px);line-height:1.15}
+.present .ptitle{flex:1;min-width:200px}
+.present .psub{font-size:14px;color:#4A5761}
+.present .seg{background:#ECEFF1;margin:0}
+.present .seg button{color:#4A5761}
+.present .seg button[aria-pressed="true"]{background:#FFFFFF;color:#17212A}
+.present .btn{background:#FFFFFF;color:#17212A;border-color:#C9D1D7}
+#presentSvg{flex:1;width:100%;min-height:0}
+
+@media (max-width:860px){
+  .app{height:auto;min-height:100%}
+  .main{grid-template-columns:1fr}
+  .stage{order:-1;position:sticky;top:env(safe-area-inset-top,0px);height:52vh;z-index:5;border-bottom:1px solid var(--line)}
+  .panel{border-right:0;overflow:visible}
+  .steps{margin:0;order:3;width:100%}
+  .steps button{flex:1;justify-content:center}
+  .actions{margin-left:auto}
+}
+@media (prefers-reduced-motion: reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 34 26" aria-hidden="true"><rect x="5" y="1" width="10" height="6" rx="2" fill="#5E84A8"/><rect x="19" y="1" width="10" height="6" rx="2" fill="#5E84A8"/><rect x="1" y="8" width="32" height="15" rx="2" fill="#E6C78C" stroke="#94703C" stroke-width="1.6"/><path d="M17 10v11" stroke="#94703C" stroke-width="1.2" stroke-dasharray="2 2"/></svg>
+      <span>Sitzplan</span>
+    </div>
+    <nav class="steps" aria-label="Arbeitsschritte">
+      <button type="button" data-step="1"><b>1</b>Raum</button>
+      <button type="button" data-step="2"><b>2</b>Klasse</button>
+      <button type="button" data-step="3"><b>3</b>Ansicht &amp; Export</button>
+    </nav>
+    <div class="actions">
+      <button type="button" class="btn" id="btnUndo" title="Rückgängig (Strg+Z)">Rückgängig</button>
+      <button type="button" class="btn" id="btnOpen">Öffnen</button>
+      <button type="button" class="btn primary" id="btnSave">Speichern</button>
+    </div>
+  </header>
+  <div class="tabbar" id="tabbar" aria-label="Geöffnete Räume und Sitzpläne"></div>
+
+  <main class="main">
+    <aside class="panel">
+      <section data-pane="1">
+        <h2>Raum anlegen</h2>
+        <button type="button" class="btn wide newroom" id="btnNewTab">+ Neuen Raum in neuem Tab anlegen</button>
+        <label class="field"><span>Raum</span><input type="text" id="roomName" placeholder="z. B. 204 oder Chemie 1" autocomplete="off"></label>
+        <div class="row2">
+          <label class="field"><span>Breite in m</span><input type="text" id="roomW" inputmode="decimal" autocomplete="off"></label>
+          <label class="field"><span>Tiefe in m</span><input type="text" id="roomH" inputmode="decimal" autocomplete="off"></label>
+        </div>
+        <p class="note">Oder die runden Griffe an den Wänden ziehen. Maße müssen nicht exakt sein.</p>
+
+        <h3>Einrichtung</h3>
+        <p class="note">In den Raum ziehen oder antippen. Die Stühle zeigen, wo die Schülerinnen und Schüler sitzen.</p>
+        <div class="palette" id="palette"></div>
+        <p class="note" id="seatInfo"></p>
+
+        <h3>Schnellaufbau</h3>
+        <div class="seg" id="genMode">
+          <button type="button" data-mode="rows" aria-pressed="true">Reihen</button>
+          <button type="button" data-mode="islands" aria-pressed="false">Inseln</button>
+        </div>
+        <div class="row2">
+          <label class="field"><span id="genALabel">Reihen</span><input type="text" id="genA" inputmode="numeric" value="4"></label>
+          <label class="field"><span id="genBLabel">Doppeltische je Reihe</span><input type="text" id="genB" inputmode="numeric" value="3"></label>
+        </div>
+        <button type="button" class="btn wide" id="btnGen">Tische einfügen</button>
+        <p class="note" id="genNote">Ersetzt alle vorhandenen Schülertische. Tafel, Türen, Lehrertisch und Einbauten bleiben stehen.</p>
+
+        <button type="button" class="btn primary wide next" data-go="2">Weiter zu Schritt 2: Klasse</button>
+      </section>
+
+      <section data-pane="2" hidden>
+        <h2>Klasse verteilen</h2>
+        <div class="seg big" id="viewSeg2">
+          <button type="button" data-view="teacher" aria-pressed="true">Meine Sicht<small>Tafel unten</small></button>
+          <button type="button" data-view="class" aria-pressed="false">Sicht der Klasse<small>Tafel oben</small></button>
+        </div>
+        <label class="field"><span>Klasse oder Kurs</span><input type="text" id="className" placeholder="z. B. 7b" autocomplete="off"></label>
+        <label class="field"><span>Vornamen</span><textarea id="names" rows="7" placeholder="Ein Name pro Zeile, oder mit Komma getrennt"></textarea></label>
+        <button type="button" class="btn wide" id="btnApply">Liste übernehmen</button>
+        <div class="count" id="count"></div>
+
+        <h3>Noch ohne Platz</h3>
+        <div class="pool" id="pool"></div>
+        <div class="row2">
+          <button type="button" class="btn" id="btnRandom">Rest zufällig setzen</button>
+          <button type="button" class="btn" id="btnClearSeats">Alle Plätze leeren</button>
+        </div>
+        <p class="note">Namen auf einen Platz ziehen. Auf einen besetzten Platz gezogen, tauschen die beiden. Zurück in das Feld oben gezogen, wird der Platz wieder frei. Es geht auch ohne Ziehen: Namen antippen, dann Platz antippen.</p>
+
+        <button type="button" class="btn primary wide next" data-go="3">Weiter zu Schritt 3: Ansicht &amp; Export</button>
+      </section>
+
+      <section data-pane="3" hidden>
+        <h2>Ansicht &amp; Export</h2>
+        <div class="seg big" id="viewSeg">
+          <button type="button" data-view="teacher" aria-pressed="true">Meine Sicht<small>Tafel unten</small></button>
+          <button type="button" data-view="class" aria-pressed="false">Sicht der Klasse<small>Tafel oben</small></button>
+        </div>
+        <label class="field"><span>Überschrift</span><input type="text" id="title" autocomplete="off"></label>
+        <label class="check"><input type="checkbox" id="withDate" checked> Datum anzeigen</label>
+        <p class="note" id="unplacedNote"></p>
+
+        <h3>Exportieren</h3>
+        <div class="row3">
+          <button type="button" class="btn" data-exp="png">PNG</button>
+          <button type="button" class="btn" data-exp="jpg">JPEG</button>
+          <button type="button" class="btn" data-exp="pdf">PDF</button>
+        </div>
+        <button type="button" class="btn wide" data-exp="pdf2">PDF mit beiden Ansichten</button>
+        <p class="note">PNG, JPEG und PDF enthalten die oben gewählte Ansicht im A4-Format.</p>
+
+        <h3>Im Unterricht zeigen</h3>
+        <button type="button" class="btn primary wide" id="btnPresent">Vollbild zeigen</button>
+      </section>
+    </aside>
+
+    <section class="stage" id="stage">
+      <svg id="plan" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" aria-label="Raumplan"></svg>
+      <div class="floatbar" id="selbar" hidden>
+        <span class="lbl" id="selLabel"></span>
+        <button type="button" class="btn sm" id="btnRot">Drehen</button>
+        <button type="button" class="btn sm" id="btnDup">Duplizieren</button>
+        <button type="button" class="btn sm" id="btnDel">Löschen</button>
+      </div>
+      <div class="stagehint" id="stageHint"></div>
+    </section>
+  </main>
+</div>
+
+<div class="ghost" id="ghost" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="fileInput" accept=".json,application/json" hidden>
+
+<dialog id="dlgSave">
+  <div class="dlg">
+    <h2>Speichern</h2>
+    <div class="seg" id="saveKind">
+      <button type="button" data-kind="raum">Raum als Vorlage</button>
+      <button type="button" data-kind="sitzplan">Sitzplan</button>
+    </div>
+    <label class="field"><span id="saveLabel">Raumnummer</span>
+      <div class="prefixed"><b id="savePrefix">Raum</b><input type="text" id="saveName" autocomplete="off"></div>
+    </label>
+    <p class="note" id="saveHint"></p>
+    <label class="check"><input type="checkbox" id="saveLib" checked> In der App ablegen (in diesem Browser)</label>
+    <label class="check"><input type="checkbox" id="saveFile" checked> <span>Als Datei sichern: <b id="saveFileName"></b></span></label>
+    <div class="dlg-actions">
+      <button type="button" class="btn" id="saveCancel">Abbrechen</button>
+      <button type="button" class="btn primary" id="saveOk">Speichern</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="dlgLib">
+  <div class="dlg">
+    <h2>Öffnen</h2>
+    <div class="seg" id="libTab">
+      <button type="button" data-tab="raum" aria-pressed="true">Räume</button>
+      <button type="button" data-tab="sitzplan" aria-pressed="false">Sitzpläne</button>
+    </div>
+    <ul class="liblist" id="libList"></ul>
+    <p class="note" id="libNote">Diese Ablage liegt nur in diesem Browser auf diesem Gerät. Für andere Geräte, Kolleginnen und Kollegen oder als Sicherung: beim Speichern die Datei mitsichern und hier importieren.</p>
+    <div class="dlg-actions">
+      <button type="button" class="btn" id="btnNewRoom">Neuer leerer Raum</button>
+      <button type="button" class="btn" id="btnImport">Datei importieren</button>
+      <button type="button" class="btn primary" id="libClose">Schließen</button>
+    </div>
+  </div>
+</dialog>
+
+<div class="present" id="present" hidden>
+  <header>
+    <div class="ptitle"><h1 id="presentTitle"></h1><div class="psub" id="presentSub"></div></div>
+    <div class="seg" id="presentSeg">
+      <button type="button" data-view="teacher">Meine Sicht</button>
+      <button type="button" data-view="class">Sicht der Klasse</button>
+    </div>
+    <button type="button" class="btn" id="presentClose">Schließen</button>
+  </header>
+  <svg id="presentSvg" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"></svg>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- Grundlagen ---------- */
+const FONT = '"Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+const LIB_KEY = 'sitzplan.v1.bibliothek';
+const CUR_KEY = 'sitzplan.v1.aktuell';
+const WALL = 12;            // Wandstärke in cm
+const TYPES = {
+  double: {label:'Doppeltisch', w:130, h:60, seats:2},
+  single: {label:'Einzeltisch', w:65,  h:60, seats:1},
+  teacher:{label:'Lehrertisch', w:140, h:70},
+  board:  {label:'Tafel',       w:300, h:12, wall:true},
+  door:   {label:'Tür',         w:100, h:12, wall:true},
+  pillar: {label:'Säule',       w:40,  h:40},
+  hood:   {label:'Abzug',       w:120, h:70},
+  sink:   {label:'Waschbecken', w:60,  h:50}
+};
+const PALETTE = ['double','single','teacher','board','door','pillar','hood','sink'];
+const C = {
+  floor:'#E8EDEF', grid:'#D8DFE3', wall:'#36424C', desk:'#E6C78C', deskEdge:'#94703C',
+  chair:'#5E84A8', teacher:'#B98B5C', teacherEdge:'#7A5631', board:'#2E4D40', boardEdge:'#1C3229',
+  pillar:'#A3ACB2', pillarEdge:'#5F6970', hood:'#D5DEE2', hoodEdge:'#6B7D87', glass:'#EEF4F6',
+  sink:'#F7FAFB', sinkEdge:'#6B7D87', bowl:'#C3DAE8', name:'#17212A', label:'#45525C', sel:'#2B4FB8'
+};
+
+const $ = id => document.getElementById(id);
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const snap = (v,g) => Math.round(v/g)*g;
+const rr = v => Math.round(v*10)/10;
+const uid = () => Math.random().toString(36).slice(2,10);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtM = cm => (cm/100).toLocaleString('de-DE',{minimumFractionDigits:1, maximumFractionDigits:2});
+const isDesk = t => t==='double' || t==='single';
+function rotPt(x,y,deg){ const a=deg*Math.PI/180, c=Math.cos(a), s=Math.sin(a); return [x*c-y*s, x*s+y*c]; }
+function normRot(r){ return ((Math.round((Number(r)||0)/90)*90)%360+360)%360; }
+
+/* ---------- Zustand ---------- */
+function defaultRoom(){
+  const W=900, H=700;
+  return {name:'', w:W, h:H, items:[
+    {id:uid(), type:'board',   x:W/2,     y:H,      rot:0,   flip:false},
+    {id:uid(), type:'teacher', x:W-250,   y:H-105,  rot:180, flip:false},
+    {id:uid(), type:'door',    x:W,       y:H-110,  rot:270, flip:false}
+  ]};
+}
+function freshState(){ return {id:uid(), step:1, room:defaultRoom(), className:'', students:[], assign:{}, view:'teacher', title:'', withDate:true}; }
+function sanitizeRoom(r){
+  const out = {name:String((r&&r.name)||''), w:clamp(Number(r&&r.w)||900,300,2000), h:clamp(Number(r&&r.h)||700,300,2000), items:[]};
+  for (const it of ((r&&r.items)||[])){
+    if (!it || !TYPES[it.type]) continue;
+    const x=Number(it.x), y=Number(it.y);
+    if (!isFinite(x) || !isFinite(y)) continue;
+    out.items.push({id:String(it.id||uid()), type:it.type, x, y, rot:normRot(it.rot), flip:!!it.flip});
+  }
+  return out;
+}
+function sanitizePlanParts(p){
+  const students = Array.isArray(p.students) ? p.students.filter(s=>s&&s.name).map(s=>({id:String(s.id||uid()), name:String(s.name)})) : [];
+  const assign = {};
+  if (p.assign && typeof p.assign==='object') for (const k in p.assign) assign[String(k)] = String(p.assign[k]);
+  return {students, assign};
+}
+function sanitizeState(v){
+  if (!(v && v.room && Array.isArray(v.room.items))) return null;
+  const st = freshState();
+  if (v.id) st.id = String(v.id);
+  st.step = [1,2,3].includes(v.step) ? v.step : 1;
+  st.room = sanitizeRoom(v.room);
+  Object.assign(st, sanitizePlanParts(v));
+  st.className = String(v.className||'');
+  st.view = v.view==='class' ? 'class' : 'teacher';
+  st.title = String(v.title||'');
+  st.withDate = v.withDate !== false;
+  return st;
+}
+const TABS_KEY = 'sitzplan.v1.tabs';
+function loadTabs(){
+  try {
+    const v = JSON.parse(localStorage.getItem(TABS_KEY) || 'null');
+    if (v && Array.isArray(v.tabs)){
+      const seen = new Set();
+      const ts = v.tabs.map(sanitizeState).filter(Boolean).map(t => { if (seen.has(t.id)) t.id = uid(); seen.add(t.id); return t; });
+      if (ts.length) return {tabs:ts, active: ts.some(t => t.id===v.active) ? v.active : ts[0].id};
+    }
+  } catch(e){}
+  try {
+    const old = sanitizeState(JSON.parse(localStorage.getItem(CUR_KEY) || 'null'));
+    if (old) return {tabs:[old], active:old.id};
+  } catch(e){}
+  const f = freshState();
+  return {tabs:[f], active:f.id};
+}
+const boot = loadTabs();
+let tabs = boot.tabs;
+let state = tabs.find(t => t.id===boot.active) || tabs[0];
+let sel = null, selStudent = null, dropKey = null, frozenVB = null, currentVB = null;
+const histMap = new Map();
+function histOf(){ if (!histMap.has(state.id)) histMap.set(state.id, []); return histMap.get(state.id); }
+
+let persistT = null;
+function persist(){
+  clearTimeout(persistT);
+  persistT = setTimeout(() => { try { localStorage.setItem(TABS_KEY, JSON.stringify({active:state.id, tabs})); } catch(e){} }, 250);
+}
+function snapshot(){ return JSON.stringify({room:state.room, className:state.className, students:state.students, assign:state.assign}); }
+function pushHist(){ const h = histOf(); h.push(snapshot()); if (h.length>80) h.shift(); updateUndo(); }
+function undo(){
+  const h = histOf();
+  if (!h.length) return;
+  const s = JSON.parse(h.pop());
+  state.room = s.room; state.className = s.className; state.students = s.students; state.assign = s.assign;
+  sel = null; selStudent = null; dropKey = null;
+  syncInputs(); renderAll(); persist();
+  toast('Rückgängig gemacht');
+}
+function updateUndo(){ $('btnUndo').disabled = !histOf().length; }
+
+/* ---------- Geometrie ---------- */
+const items = () => state.room.items;
+const findItem = id => items().find(i => i.id===id);
+function seatsOf(it){ const t=TYPES[it.type]; if (!t.seats) return []; return t.seats===2 ? [-t.w/4, t.w/4] : [0]; }
+const seatKey = (id,i) => id + ':' + i;
+function dims(it){ const t=TYPES[it.type]; return (it.rot===90||it.rot===270) ? [t.h,t.w] : [t.w,t.h]; }
+function aabb(it, x, y){ const [w,h]=dims(it); x = x===undefined?it.x:x; y = y===undefined?it.y:y; return {l:x-w/2, r:x+w/2, t:y-h/2, b:y+h/2}; }
+const intersects = (a,b) => a.l<b.r && a.r>b.l && a.t<b.b && a.b>b.t;
+function shrink(b,d){ return {l:b.l+d, r:b.r-d, t:b.t+d, b:b.b-d}; }
+function grow(b,d){ return {l:b.l-d, r:b.r+d, t:b.t-d, b:b.b+d}; }
+function toLocal(it,px,py){ return rotPt(px-it.x, py-it.y, -it.rot); }
+function countSeats(){ return items().reduce((n,it)=>n+(TYPES[it.type].seats||0), 0); }
+
+function hitItem(px,py){
+  const its = items();
+  for (let i=its.length-1; i>=0; i--){
+    const it = its[i], t = TYPES[it.type], [lx,ly] = toLocal(it,px,py);
+    if (t.wall){
+      const top = it.type==='door' ? -WALL/2 - t.w*0.9 : -46;
+      if (Math.abs(lx)<=t.w/2+4 && ly>=top && ly<=WALL/2+10) return it;
+    } else {
+      const extra = (t.seats || it.type==='teacher') ? 26 : 0;
+      if (Math.abs(lx)<=t.w/2+3 && ly>=-t.h/2-extra && ly<=t.h/2+3) return it;
+    }
+  }
+  return null;
+}
+function hitSeat(px,py){
+  const its = items();
+  for (let i=its.length-1; i>=0; i--){
+    const it = its[i], t = TYPES[it.type];
+    if (!t.seats) continue;
+    const [lx,ly] = toLocal(it,px,py);
+    if (Math.abs(lx)<=t.w/2+3 && ly>=-t.h/2-26 && ly<=t.h/2+3){
+      const idx = t.seats===2 ? (lx<0?0:1) : 0;
+      return {it, idx, key:seatKey(it.id, idx)};
+    }
+  }
+  return null;
+}
+function clampItem(it){
+  if (TYPES[it.type].wall) return;
+  const R=state.room, [w,h]=dims(it);
+  it.x = R.w>=w ? clamp(it.x, w/2, R.w-w/2) : R.w/2;
+  it.y = R.h>=h ? clamp(it.y, h/2, R.h-h/2) : R.h/2;
+}
+function attachWall(it){
+  const R=state.room, t=TYPES[it.type];
+  if (it.rot===0 || it.rot===180){
+    it.y = it.rot===0 ? R.h : 0;
+    it.x = R.w>=t.w ? clamp(it.x, t.w/2, R.w-t.w/2) : R.w/2;
+  } else {
+    it.x = it.rot===90 ? 0 : R.w;
+    it.y = R.h>=t.w ? clamp(it.y, t.w/2, R.h-t.w/2) : R.h/2;
+  }
+}
+function fixRoom(){ for (const it of items()){ if (TYPES[it.type].wall) attachWall(it); else clampItem(it); } }
+
+function moveItem(it, x, y){
+  const R=state.room, t=TYPES[it.type];
+  if (t.wall){
+    const d = [['b',Math.abs(R.h-y)],['t',Math.abs(y)],['l',Math.abs(x)],['r',Math.abs(R.w-x)]].sort((a,b)=>a[1]-b[1])[0][0];
+    it.rot = {b:0, t:180, l:90, r:270}[d];
+    if (d==='b'||d==='t') it.x = snap(x,5); else it.y = snap(y,5);
+    attachWall(it);
+    return;
+  }
+  let nx = snap(x,5), ny = snap(y,5);
+  const [w,h] = dims(it);
+  const a = {l:nx-w/2, r:nx+w/2, t:ny-h/2, b:ny+h/2};
+  const near = 14, align = 8;
+  let bx = null, by = null;
+  const take = (cur, d, thr) => (Math.abs(d)<thr && (cur===null || Math.abs(d)<Math.abs(cur))) ? d : cur;
+  for (const o of items()){
+    if (o===it || TYPES[o.type].wall) continue;
+    const b = aabb(o);
+    const vOv = a.t < b.b+near && a.b > b.t-near;
+    const hOv = a.l < b.r+near && a.r > b.l-near;
+    if (vOv){ bx = take(bx, b.r-a.l, near); bx = take(bx, b.l-a.r, near); }
+    if (hOv){ by = take(by, b.b-a.t, near); by = take(by, b.t-a.b, near); }
+    bx = take(bx, b.l-a.l, align); bx = take(bx, b.r-a.r, align);
+    by = take(by, b.t-a.t, align); by = take(by, b.b-a.b, align);
+  }
+  bx = take(bx, WALL/2-a.l, near); bx = take(bx, R.w-WALL/2-a.r, near);
+  by = take(by, WALL/2-a.t, near); by = take(by, R.h-WALL/2-a.b, near);
+  if (bx!==null) nx += bx;
+  if (by!==null) ny += by;
+  it.x = nx; it.y = ny;
+  clampItem(it);
+}
+function findFree(it){
+  const R=state.room, [w,h]=dims(it);
+  for (let y=h/2+44; y<=R.h-h/2-20; y+=10){
+    for (let x=w/2+24; x<=R.w-w/2-24; x+=10){
+      const a = grow({l:x-w/2, r:x+w/2, t:y-h/2, b:y+h/2}, 6);
+      a.t -= 24;
+      if (!items().some(o => o!==it && !TYPES[o.type].wall && intersects(a, aabb(o)))){ it.x=x; it.y=y; return; }
+    }
+  }
+  it.x = R.w/2; it.y = R.h/2; clampItem(it);
+}
+function resizeSide(side, v){
+  const R=state.room, MIN=300, MAX=2000;
+  let shift = 0;
+  if (side==='r') R.w = clamp(snap(v,10), MIN, MAX);
+  else if (side==='b') R.h = clamp(snap(v,10), MIN, MAX);
+  else if (side==='l'){
+    shift = clamp(snap(v,10), R.w-MAX, R.w-MIN);
+    if (shift){ R.w -= shift; items().forEach(i => { i.x -= shift; }); }
+  } else {
+    shift = clamp(snap(v,10), R.h-MAX, R.h-MIN);
+    if (shift){ R.h -= shift; items().forEach(i => { i.y -= shift; }); }
+  }
+  fixRoom();
+  return shift;
+}
+
+/* ---------- Schülerinnen und Schüler ---------- */
+const stuById = id => state.students.find(s => s.id===id);
+function seatOfStudent(sid){ for (const k in state.assign) if (state.assign[k]===sid) return k; return null; }
+function placedCount(){ return Object.keys(state.assign).length; }
+function cleanupAssign(){
+  const valid = new Set();
+  for (const it of items()) seatsOf(it).forEach((_,i) => valid.add(seatKey(it.id,i)));
+  const ids = new Set(state.students.map(s=>s.id));
+  const seen = new Set();
+  for (const k of Object.keys(state.assign)){
+    const sid = state.assign[k];
+    if (!valid.has(k) || !ids.has(sid) || seen.has(sid)) delete state.assign[k];
+    else seen.add(sid);
+  }
+}
+function placeStudent(sid, key){
+  const from = seatOfStudent(sid), occ = state.assign[key];
+  if (from===key) return;
+  if (from) delete state.assign[from];
+  if (occ && occ!==sid && from) state.assign[from] = occ;
+  state.assign[key] = sid;
+}
+function unassign(sid){ const k = seatOfStudent(sid); if (k) delete state.assign[k]; }
+function parseNames(txt){
+  return txt.replace(/\t+/g,' ').split(/[\n,;]+/)
+    .map(s => s.replace(/^\s*\d+\s*[.)]?\s+/, '').replace(/\s+/g,' ').trim())
+    .filter(Boolean);
+}
+
+/* ---------- Namensgröße ---------- */
+const mctx = document.createElement('canvas').getContext('2d');
+let widthCache = new Map();
+function tw(s){
+  if (widthCache.has(s)) return widthCache.get(s);
+  mctx.font = '700 100px ' + FONT;
+  const w = mctx.measureText(s).width/100 || s.length*0.56;
+  widthCache.set(s, w);
+  return w;
+}
+function splitName(n){
+  const mid = n.length/2;
+  let best = -1, bestD = 1e9;
+  for (let i=1; i<n.length-1; i++){
+    if (n[i]==='-' || n[i]===' '){ const d = Math.abs(i-mid); if (d<bestD){ bestD=d; best=i; } }
+  }
+  if (best>=0) return n[best]==='-' ? [n.slice(0,best+1), n.slice(best+1)] : [n.slice(0,best), n.slice(best+1)];
+  return null;
+}
+// Trennung langer Einzelnamen vor einer Konsonant-Vokal-Silbe (Maxi-milian, Konstan-tinos)
+function syllableSplit(n){
+  if (n.length < 8) return null;
+  const V = /[aeiouyäöüàáâèéêìíîòóôùúû]/i, mid = n.length/2;
+  let best = -1, bestD = 1e9;
+  for (let i=3; i<=n.length-3; i++){
+    const a = n[i-1], b = n[i], c = n[i+1];
+    if (V.test(b) || !V.test(c) || !/\p{L}/u.test(a) || !/\p{L}/u.test(b)) continue;
+    if (!V.test(n.slice(0,i))) continue;
+    if ((b==='h' && /[cs]/i.test(a)) || (b==='k' && /c/i.test(a)) || (b==='h' && /[pt]/i.test(a))) continue;
+    const d = Math.abs(i-mid);
+    if (d < bestD){ bestD = d; best = i; }
+  }
+  return best>0 ? [n.slice(0,best)+'-', n.slice(best)] : null;
+}
+function fitName(name, maxW, maxH){
+  const base = 17, min = 8;
+  const size1 = Math.min(base, maxW/tw(name));
+  if (size1 >= 11.5) return {lines:[name], size:size1};
+  const parts = splitName(name) || (size1 < 10.5 ? syllableSplit(name) : null);
+  if (parts){
+    const size2 = Math.min(base, maxW/Math.max(tw(parts[0]), tw(parts[1])), maxH/2.3);
+    if (size2 > size1+0.8) return {lines:parts, size:size2};
+  }
+  return {lines:[name], size:Math.max(size1, min)};
+}
+
+/* ---------- Szene (gemeinsam für Bildschirm und Export) ---------- */
+function buildScene(o){
+  const R=state.room, W=R.w, H=R.h, flip = o.view==='class';
+  const S=[], X=[];
+  const mp = (x,y) => flip ? [W-x, H-y] : [x,y];
+  const world = (it,lx,ly) => { const [dx,dy]=rotPt(lx,ly,it.rot); return mp(it.x+dx, it.y+dy); };
+  const label = (it,lx,ly,txt,size,fill) => { const [x,y]=world(it,lx,ly); X.push({x,y,lines:[txt],size,weight:700,fill,anchor:'middle'}); };
+
+  S.push({t:'rect', x:0, y:0, w:W, h:H, fill:C.floor});
+  let d='';
+  for (let x=50; x<W; x+=50) d += 'M'+x+' 0V'+H;
+  for (let y=50; y<H; y+=50) d += 'M0 '+y+'H'+W;
+  if (d) S.push({t:'path', d, stroke:C.grid, sw:1.2, fill:'none'});
+
+  for (const it of R.items) if (!TYPES[it.type].wall) drawItem(it);
+  S.push({t:'rect', x:0, y:0, w:W, h:H, fill:'none', stroke:C.wall, sw:WALL});
+  for (const it of R.items) if (TYPES[it.type].wall) drawItem(it);
+
+  if (!R.items.some(i => i.type==='board')){
+    const [x,y] = mp(W/2, H+30);
+    X.push({x, y, lines:['vorne'], size:17, weight:700, fill:C.label, anchor:'middle', cls:'outside'});
+  }
+  if (o.mode==='edit'){
+    const hs = [['t',W/2,-26],['b',W/2,H+26],['l',-26,H/2],['r',W+26,H/2]];
+    for (const [k,x,y] of hs){
+      S.push({t:'circle', cx:x, cy:y, r:15, fill:'#FFFFFF', stroke:C.sel, sw:3});
+      const a = (k==='t'||k==='b')
+        ? `M${x} ${y-8}V${y+8}M${x-4} ${y-4}L${x} ${y-8}L${x+4} ${y-4}M${x-4} ${y+4}L${x} ${y+8}L${x+4} ${y+4}`
+        : `M${x-8} ${y}H${x+8}M${x-4} ${y-4}L${x-8} ${y}L${x-4} ${y+4}M${x+4} ${y-4}L${x+8} ${y}L${x+4} ${y+4}`;
+      S.push({t:'path', d:a, stroke:C.sel, sw:2, fill:'none'});
+    }
+    X.push({x:0, y:-50, lines:[fmtM(W)+' m × '+fmtM(H)+' m'], size:17, weight:700, fill:C.label, anchor:'start', cls:'outside'});
+  }
+  return {S, X, W, H, flip};
+
+  function drawItem(it){
+    const t=TYPES[it.type], tf={x:it.x, y:it.y, rot:it.rot}, w=t.w, h=t.h;
+    switch (it.type){
+      case 'double': case 'single': {
+        const seats = seatsOf(it), sw = w/seats.length;
+        seats.forEach(cx => S.push({t:'rect', x:cx-19, y:-h/2-21, w:38, h:22, rx:6, fill:C.chair, tf}));
+        S.push({t:'rect', x:-w/2, y:-h/2, w, h, rx:3, fill:C.desk, stroke:C.deskEdge, sw:2, tf});
+        if (seats.length===2) S.push({t:'path', d:`M0 ${-h/2+5}V${h/2-5}`, stroke:C.deskEdge, sw:1.5, dash:'4 4', fill:'none', tf});
+        seats.forEach((cx,i) => {
+          const key = seatKey(it.id,i), sid = state.assign[key];
+          if (o.mode==='assign'){
+            if (o.dropKey===key) S.push({t:'rect', x:cx-sw/2+4, y:-h/2+4, w:sw-8, h:h-8, rx:4, fill:C.sel, opacity:.22, stroke:C.sel, sw:2.5, tf});
+            else if (sid && sid===o.selStudent) S.push({t:'rect', x:cx-sw/2+4, y:-h/2+4, w:sw-8, h:h-8, rx:4, fill:C.sel, opacity:.16, stroke:C.sel, sw:2.5, tf});
+            else if (!sid) S.push({t:'rect', x:cx-sw/2+8, y:-h/2+8, w:sw-16, h:h-16, rx:4, fill:'none', stroke:C.deskEdge, sw:1.2, dash:'3 4', opacity:.55, tf});
+          }
+          if (sid){
+            const st = stuById(sid);
+            if (st){
+              const f = fitName(st.name, sw-6, h-8);
+              const [x,y] = world(it, cx, 0);
+              X.push({x, y, lines:f.lines, size:f.size, weight:700, fill:C.name, anchor:'middle'});
+            }
+          }
+        });
+        break;
+      }
+      case 'teacher':
+        S.push({t:'rect', x:-22, y:-h/2-22, w:44, h:24, rx:7, fill:C.chair, tf});
+        S.push({t:'rect', x:-w/2, y:-h/2, w, h, rx:3, fill:C.teacher, stroke:C.teacherEdge, sw:2, tf});
+        label(it, 0, 0, 'Lehrertisch', 15, '#2A1C0E');
+        break;
+      case 'pillar':
+        S.push({t:'rect', x:-w/2, y:-h/2, w, h, fill:C.pillar, stroke:C.pillarEdge, sw:2, tf});
+        S.push({t:'path', d:`M${-w/2} ${-h/2}L${w/2} ${h/2}M${w/2} ${-h/2}L${-w/2} ${h/2}`, stroke:C.pillarEdge, sw:1.5, fill:'none', tf});
+        break;
+      case 'hood':
+        S.push({t:'rect', x:-w/2, y:-h/2, w, h, rx:2, fill:C.hood, stroke:C.hoodEdge, sw:2, tf});
+        S.push({t:'rect', x:-w/2+8, y:-h/2+8, w:w-16, h:h-16, rx:2, fill:C.glass, stroke:C.hoodEdge, sw:1, tf});
+        label(it, 0, 0, 'Abzug', 15, C.label);
+        break;
+      case 'sink':
+        S.push({t:'rect', x:-w/2, y:-h/2, w, h, rx:4, fill:C.sink, stroke:C.sinkEdge, sw:2, tf});
+        S.push({t:'rect', x:-w/2+9, y:-h/2+11, w:w-18, h:h-20, rx:14, fill:C.bowl, stroke:C.sinkEdge, sw:1, tf});
+        S.push({t:'circle', cx:0, cy:-h/2+6, r:3, fill:C.sinkEdge, tf});
+        break;
+      case 'board':
+        S.push({t:'rect', x:-w/2, y:-WALL/2-11, w, h:11, fill:C.board, stroke:C.boardEdge, sw:1.5, tf});
+        label(it, 0, -WALL/2-32, 'Tafel', 18, C.label);
+        break;
+      case 'door': {
+        const r = w*0.9, hx = it.flip ? w/2 : -w/2, ex = it.flip ? w/2-r : -w/2+r, sweep = it.flip ? 0 : 1;
+        S.push({t:'rect', x:-w/2, y:-WALL/2-1, w, h:WALL+2, fill:C.floor, tf});
+        S.push({t:'path', d:`M${-w/2} ${-WALL/2}V${WALL/2}M${w/2} ${-WALL/2}V${WALL/2}`, stroke:C.wall, sw:3, fill:'none', tf});
+        S.push({t:'path', d:`M${hx} ${-WALL/2}L${hx} ${-WALL/2-r}`, stroke:C.wall, sw:2.5, fill:'none', tf});
+        S.push({t:'path', d:`M${hx} ${-WALL/2-r}A${r} ${r} 0 0 ${sweep} ${ex} ${-WALL/2}`, stroke:C.wall, sw:1.5, dash:'5 5', fill:'none', tf});
+        label(it, (hx+ex)/2, -WALL/2-r*0.38, 'Tür', 14, C.label);
+        break;
+      }
+    }
+    if (o.mode==='edit' && o.sel===it.id){
+      let top, bot = h/2+6;
+      if (t.wall){ top = it.type==='door' ? -WALL/2-w*0.9-6 : -WALL/2-17; bot = WALL/2+6; }
+      else top = -h/2-6 - ((t.seats || it.type==='teacher') ? 22 : 0);
+      S.push({t:'rect', x:-w/2-6, y:top, w:w+12, h:bot-top, rx:6, fill:'none', stroke:C.sel, sw:3, tf});
+    }
+  }
+}
+
+/* ---------- Ausgabe als SVG ---------- */
+function shapeAttrs(sh){
+  let a = ' fill="' + (sh.fill||'none') + '"';
+  if (sh.stroke) a += ' stroke="' + sh.stroke + '" stroke-width="' + (sh.sw||1) + '"';
+  if (sh.dash) a += ' stroke-dasharray="' + sh.dash + '"';
+  if (sh.opacity!=null) a += ' opacity="' + sh.opacity + '"';
+  if (sh.tf) a += ' transform="translate(' + rr(sh.tf.x) + ' ' + rr(sh.tf.y) + ') rotate(' + (sh.tf.rot||0) + ')"';
+  return a;
+}
+function sceneSVG(sc){
+  let s = '<g' + (sc.flip ? ' transform="rotate(180 ' + sc.W/2 + ' ' + sc.H/2 + ')"' : '') + '>';
+  for (const sh of sc.S){
+    if (sh.t==='rect') s += '<rect x="'+rr(sh.x)+'" y="'+rr(sh.y)+'" width="'+rr(sh.w)+'" height="'+rr(sh.h)+'"'+(sh.rx?' rx="'+sh.rx+'"':'')+shapeAttrs(sh)+'/>';
+    else if (sh.t==='circle') s += '<circle cx="'+rr(sh.cx)+'" cy="'+rr(sh.cy)+'" r="'+sh.r+'"'+shapeAttrs(sh)+'/>';
+    else s += '<path d="'+sh.d+'"'+shapeAttrs(sh)+'/>';
+  }
+  s += '</g>';
+  for (const t of sc.X){
+    const n = t.lines.length, lh = t.size*1.12, y0 = t.y-(n-1)*lh/2;
+    s += '<text font-size="'+rr(t.size)+'" font-weight="'+(t.weight||400)+'" fill="'+t.fill+'" text-anchor="'+(t.anchor||'middle')+'"'+(t.cls?' class="'+t.cls+'"':'')+'>';
+    t.lines.forEach((ln,i) => { s += '<tspan x="'+rr(t.x)+'" y="'+rr(y0+i*lh+t.size*0.36)+'">'+esc(ln)+'</tspan>'; });
+    s += '</text>';
+  }
+  return s;
+}
+
+/* ---------- Ausgabe auf Canvas (Export) ---------- */
+function rrPath(x,y,w,h,r){
+  const p = new Path2D();
+  r = Math.min(r||0, w/2, h/2);
+  if (!r){ p.rect(x,y,w,h); return p; }
+  p.moveTo(x+r,y); p.arcTo(x+w,y,x+w,y+h,r); p.arcTo(x+w,y+h,x,y+h,r); p.arcTo(x,y+h,x,y,r); p.arcTo(x,y,x+w,y,r); p.closePath();
+  return p;
+}
+function drawScene(ctx, sc, x0, y0, scale){
+  ctx.save(); ctx.translate(x0,y0); ctx.scale(scale,scale);
+  ctx.save();
+  if (sc.flip){ ctx.translate(sc.W/2, sc.H/2); ctx.rotate(Math.PI); ctx.translate(-sc.W/2, -sc.H/2); }
+  for (const sh of sc.S){
+    ctx.save();
+    if (sh.tf){ ctx.translate(sh.tf.x, sh.tf.y); if (sh.tf.rot) ctx.rotate(sh.tf.rot*Math.PI/180); }
+    if (sh.opacity!=null) ctx.globalAlpha = sh.opacity;
+    let p;
+    if (sh.t==='rect') p = rrPath(sh.x, sh.y, sh.w, sh.h, sh.rx);
+    else if (sh.t==='circle'){ p = new Path2D(); p.arc(sh.cx, sh.cy, sh.r, 0, Math.PI*2); }
+    else p = new Path2D(sh.d);
+    if (sh.fill && sh.fill!=='none'){ ctx.fillStyle = sh.fill; ctx.fill(p); }
+    if (sh.stroke){ ctx.strokeStyle = sh.stroke; ctx.lineWidth = sh.sw||1; ctx.setLineDash(sh.dash ? sh.dash.split(/[ ,]+/).map(Number) : []); ctx.stroke(p); }
+    ctx.restore();
+  }
+  ctx.restore();
+  ctx.textBaseline = 'alphabetic';
+  for (const t of sc.X){
+    ctx.fillStyle = t.fill;
+    ctx.font = (t.weight||400) + ' ' + t.size + 'px ' + FONT;
+    ctx.textAlign = t.anchor==='start' ? 'left' : t.anchor==='end' ? 'right' : 'center';
+    const n = t.lines.length, lh = t.size*1.12, y = t.y-(n-1)*lh/2;
+    t.lines.forEach((ln,i) => ctx.fillText(ln, t.x, y+i*lh+t.size*0.36));
+  }
+  ctx.restore();
+}
+
+/* ---------- Darstellung ---------- */
+const svg = $('plan');
+function modeNow(){ return state.step===1 ? 'edit' : state.step===2 ? 'assign' : 'show'; }
+function renderPlan(){
+  const mode = modeNow(), view = state.step===1 ? 'teacher' : state.view;
+  const sc = buildScene({view, mode, sel, dropKey, selStudent});
+  const M = mode==='edit' ? 78 : 45;
+  const vb = frozenVB || [-M, -M, state.room.w+2*M, state.room.h+2*M];
+  currentVB = vb.slice();
+  svg.setAttribute('viewBox', vb.join(' '));
+  svg.innerHTML = sceneSVG(sc);
+}
+function defaultTitle(){
+  let t = 'Sitzplan' + (state.className ? ' ' + state.className : '');
+  const rn = state.room.name.trim();
+  if (rn) t += ' – ' + (/^\d/.test(rn) ? 'Raum ' + rn : rn);
+  return t;
+}
+const computeTitle = () => state.title.trim() || defaultTitle();
+const viewText = v => v==='class' ? 'Sicht der Klasse – die Tafel ist oben' : 'Sicht der Lehrkraft – die Tafel ist unten';
+const dateText = () => new Date().toLocaleDateString('de-DE', {day:'numeric', month:'long', year:'numeric'});
+
+function renderPanel(){
+  const st = state.step;
+  document.querySelectorAll('.steps button').forEach(b => {
+    if (Number(b.dataset.step)===st) b.setAttribute('aria-current','step'); else b.removeAttribute('aria-current');
+  });
+  document.querySelectorAll('[data-pane]').forEach(p => { p.hidden = Number(p.dataset.pane)!==st; });
+  document.querySelectorAll('#viewSeg button, #viewSeg2 button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view===state.view)));
+
+  const it = st===1 && sel ? findItem(sel) : null;
+  $('selbar').hidden = !it;
+  if (it){
+    $('selLabel').textContent = TYPES[it.type].label;
+    $('btnRot').hidden = it.type==='board';
+    $('btnRot').textContent = it.type==='door' ? 'Anschlag wechseln' : 'Drehen';
+  }
+
+  const seats = countSeats(), n = state.students.length, placed = placedCount();
+  if (st===1){
+    $('seatInfo').textContent = seats ? 'Der Raum hat bisher ' + seats + ' Sitzplätze.' : 'Noch keine Schülertische im Raum.';
+    syncDims();
+  }
+  if (st===2){
+    const c = $('count');
+    let msg = n + ' Namen, ' + seats + ' Plätze, ' + placed + ' bereits verteilt.';
+    if (n > seats) msg += ' Es fehlen ' + (n-seats) + ' Plätze – in Schritt 1 Tische ergänzen.';
+    else if (n && seats > n) msg += ' ' + (seats-n) + (seats-n===1 ? ' Platz bleibt' : ' Plätze bleiben') + ' frei.';
+    c.textContent = msg;
+    c.classList.toggle('warn', n > seats);
+    renderPool();
+  }
+  if (st===3){
+    $('title').placeholder = defaultTitle();
+    const un = n - placed;
+    $('unplacedNote').textContent = un>0 ? (un===1 ? 'Ein Name hat noch keinen Platz.' : un + ' Namen haben noch keinen Platz.') : '';
+  }
+  $('stageHint').textContent =
+    st===1 ? (items().some(i=>isDesk(i.type)) ? 'Antippen wählt aus, Ziehen verschiebt. Tische rasten aneinander ein. Mit den runden Griffen änderst du die Raumgröße.' : 'Ziehe Tische aus der Einrichtung in den Raum oder nutze den Schnellaufbau.')
+    : st===2 ? (state.view==='class' ? 'Sicht der Klasse: die Tafel ist oben. ' : '') + 'Die Tische sind in diesem Schritt fest. Zum Umstellen zurück zu Schritt 1.'
+    : viewText(state.view) + '.';
+  updateUndo();
+}
+function renderPool(){
+  const placed = new Set(Object.values(state.assign));
+  const un = state.students.filter(s => !placed.has(s.id));
+  $('pool').innerHTML = un.length
+    ? un.map(s => '<button type="button" class="chip'+(s.id===selStudent?' sel':'')+'" data-sid="'+esc(s.id)+'">'+esc(s.name)+'</button>').join('')
+    : '<p class="pool-empty">' + (state.students.length ? 'Alle haben einen Platz.' : 'Noch keine Namen. Trage sie oben ein und tippe auf „Liste übernehmen“.') + '</p>';
+}
+function renderAll(){ renderTabs(); renderPlan(); renderPanel(); if (!$('present').hidden) renderPresent(); }
+
+function syncDims(){
+  if (document.activeElement!==$('roomW')) $('roomW').value = fmtM(state.room.w);
+  if (document.activeElement!==$('roomH')) $('roomH').value = fmtM(state.room.h);
+}
+function syncInputs(){
+  $('roomName').value = state.room.name;
+  syncDims();
+  $('className').value = state.className;
+  $('names').value = state.students.map(s => s.name).join('\n');
+  $('title').value = state.title;
+  $('withDate').checked = state.withDate;
+}
+
+/* ---------- Hinweise ---------- */
+let toastT = null;
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600);
+}
+function armConfirm(btn, label, action){
+  if (btn.dataset.armed){ action(); return; }
+  const old = btn.textContent;
+  btn.dataset.armed = '1'; btn.textContent = label;
+  setTimeout(() => { if (btn.isConnected){ delete btn.dataset.armed; btn.textContent = old; } }, 3000);
+}
+
+/* ---------- Ziehen und Ablegen ---------- */
+let drag = null;
+const ghost = $('ghost');
+function showGhost(text, e){ ghost.textContent = text; ghost.hidden = false; moveGhost(e); }
+function moveGhost(e){ ghost.style.transform = 'translate(' + e.clientX + 'px,' + e.clientY + 'px) translate(-50%,-150%)'; }
+function hideGhost(){ ghost.hidden = true; }
+function svgPt(e){
+  const m = svg.getScreenCTM();
+  if (!m) return {x:0, y:0};
+  const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+  const q = p.matrixTransform(m.inverse());
+  return {x:q.x, y:q.y};
+}
+function roomPt(e){
+  const p = svgPt(e);
+  return (state.step!==1 && state.view==='class') ? {x:state.room.w-p.x, y:state.room.h-p.y} : p;
+}
+const inside = (r,x,y,pad) => { pad = pad||0; return x>=r.left-pad && x<=r.right+pad && y>=r.top-pad && y<=r.bottom+pad; };
+
+function beginDrag(e, el, d){
+  drag = Object.assign({pid:e.pointerId, sx:e.clientX, sy:e.clientY, moved:false, thr:6}, d);
+  try { el.setPointerCapture(e.pointerId); } catch(_){}
+  window.addEventListener('pointermove', onMove, {passive:false});
+  window.addEventListener('pointerup', onUp);
+  window.addEventListener('pointercancel', onCancel);
+}
+function endDrag(){
+  window.removeEventListener('pointermove', onMove);
+  window.removeEventListener('pointerup', onUp);
+  window.removeEventListener('pointercancel', onCancel);
+  drag = null; hideGhost(); $('pool').classList.remove('over');
+}
+function onMove(e){
+  if (!drag || e.pointerId!==drag.pid) return;
+  if (!drag.moved){
+    if (Math.hypot(e.clientX-drag.sx, e.clientY-drag.sy) < drag.thr) return;
+    drag.moved = true;
+    if (drag.onStart) drag.onStart(e);
+  }
+  if (drag.onMove) drag.onMove(e);
+  e.preventDefault();
+}
+function onUp(e){
+  if (!drag || e.pointerId!==drag.pid) return;
+  const d = drag; endDrag();
+  if (d.moved){ if (d.onDrop) d.onDrop(e); } else if (d.onTap) d.onTap(e);
+}
+function onCancel(e){
+  if (!drag || e.pointerId!==drag.pid) return;
+  const d = drag; endDrag();
+  if (d.onCancel) d.onCancel();
+}
+
+function dropTargetAt(e){
+  if (inside($('pool').getBoundingClientRect(), e.clientX, e.clientY, 10) && !$('pool').closest('[hidden]')) return {type:'pool'};
+  if (inside(svg.getBoundingClientRect(), e.clientX, e.clientY)){
+    const p = roomPt(e), s = hitSeat(p.x, p.y);
+    if (s) return {type:'seat', key:s.key};
+  }
+  return null;
+}
+function hoverStudent(e){
+  moveGhost(e);
+  const tg = dropTargetAt(e);
+  const k = tg && tg.type==='seat' ? tg.key : null;
+  if (k!==dropKey){ dropKey = k; renderPlan(); }
+  $('pool').classList.toggle('over', !!(tg && tg.type==='pool'));
+}
+function dropStudent(sid, e){
+  const tg = dropTargetAt(e);
+  dropKey = null;
+  if (tg && tg.type==='seat' && seatOfStudent(sid)!==tg.key){ pushHist(); placeStudent(sid, tg.key); }
+  else if (tg && tg.type==='pool' && seatOfStudent(sid)){ pushHist(); unassign(sid); }
+  selStudent = null;
+  renderPlan(); renderPanel(); persist();
+}
+function studentDrag(e, el, sid, onTap){
+  beginDrag(e, el, {
+    onStart(ev){ const s = stuById(sid); showGhost(s ? s.name : '', ev); if (el.classList) el.classList.add('dragging'); },
+    onMove: hoverStudent,
+    onDrop(ev){ dropStudent(sid, ev); },
+    onTap,
+    onCancel(){ dropKey = null; renderPlan(); renderPool(); }
+  });
+}
+function tapSeat(key){
+  if (selStudent){
+    if (seatOfStudent(selStudent)!==key){ pushHist(); placeStudent(selStudent, key); }
+    selStudent = null;
+  } else if (state.assign[key]) selStudent = state.assign[key];
+  renderPlan(); renderPanel(); persist();
+}
+
+svg.addEventListener('pointerdown', e => {
+  if (e.button && e.button!==0) return;
+  if (state.step===3) return;
+  const p = roomPt(e);
+  if (state.step===1){
+    const W = state.room.w, H = state.room.h;
+    const hs = [['t',W/2,-26],['b',W/2,H+26],['l',-26,H/2],['r',W+26,H/2]];
+    const h = hs.find(([,x,y]) => Math.hypot(p.x-x, p.y-y) < 28);
+    if (h){
+      const side = h[0];
+      frozenVB = currentVB.slice();
+      beginDrag(e, svg, {
+        thr:2,
+        onStart(){ pushHist(); },
+        onMove(ev){
+          const q = svgPt(ev);
+          if (side==='r') resizeSide('r', q.x-26);
+          else if (side==='b') resizeSide('b', q.y-26);
+          else if (side==='l'){ const s = resizeSide('l', q.x+26); frozenVB[0] -= s; }
+          else { const s = resizeSide('t', q.y+26); frozenVB[1] -= s; }
+          renderPlan(); syncDims();
+        },
+        onDrop(){ frozenVB = null; renderAll(); persist(); },
+        onTap(){ frozenVB = null; },
+        onCancel(){ frozenVB = null; renderAll(); }
+      });
+      e.preventDefault();
+      return;
+    }
+    const it = hitItem(p.x, p.y);
+    if (!it){ if (sel){ sel = null; renderPlan(); renderPanel(); } return; }
+    sel = it.id; renderPlan(); renderPanel();
+    const off = TYPES[it.type].wall ? {x:0, y:0} : {x:p.x-it.x, y:p.y-it.y};
+    beginDrag(e, svg, {
+      thr:3,
+      onStart(){ pushHist(); },
+      onMove(ev){ const q = svgPt(ev), cur = findItem(it.id); if (!cur) return; moveItem(cur, q.x-off.x, q.y-off.y); renderPlan(); },
+      onDrop(){ persist(); renderPanel(); }
+    });
+    e.preventDefault();
+  } else if (state.step===2){
+    const s = hitSeat(p.x, p.y);
+    if (!s){ if (selStudent){ selStudent = null; renderPlan(); renderPool(); } return; }
+    const sid = state.assign[s.key];
+    if (sid) studentDrag(e, svg, sid, () => tapSeat(s.key));
+    else beginDrag(e, svg, {onTap(){ tapSeat(s.key); }});
+    e.preventDefault();
+  }
+});
+
+/* ---------- Schritt 1: Einrichtung ---------- */
+const ICONS = {
+  double: '<rect x="7" y="2" width="11" height="6" rx="2" fill="#5E84A8"/><rect x="22" y="2" width="11" height="6" rx="2" fill="#5E84A8"/><rect x="2" y="9" width="36" height="16" rx="2" fill="#E6C78C" stroke="#94703C" stroke-width="1.5"/><path d="M20 11v12" stroke="#94703C" stroke-dasharray="2 2"/>',
+  single: '<rect x="14" y="2" width="12" height="6" rx="2" fill="#5E84A8"/><rect x="10" y="9" width="20" height="16" rx="2" fill="#E6C78C" stroke="#94703C" stroke-width="1.5"/>',
+  teacher:'<rect x="14" y="2" width="12" height="6" rx="2" fill="#5E84A8"/><rect x="2" y="9" width="36" height="16" rx="2" fill="#B98B5C" stroke="#7A5631" stroke-width="1.5"/>',
+  board:  '<rect x="1" y="21" width="38" height="4" fill="#36424C"/><rect x="5" y="15" width="30" height="5" fill="#2E4D40"/>',
+  door:   '<rect x="1" y="23" width="38" height="4" fill="#36424C"/><rect x="8" y="22" width="24" height="6" fill="#E8EDEF"/><path d="M8 23V3" stroke="#36424C" stroke-width="2"/><path d="M8 3A20 20 0 0 1 28 23" fill="none" stroke="#36424C" stroke-dasharray="3 3"/>',
+  pillar: '<rect x="11" y="4" width="18" height="18" fill="#A3ACB2" stroke="#5F6970" stroke-width="1.5"/><path d="M11 4l18 18M29 4L11 22" stroke="#5F6970"/>',
+  hood:   '<rect x="3" y="4" width="34" height="20" fill="#D5DEE2" stroke="#6B7D87" stroke-width="1.5"/><rect x="6" y="7" width="28" height="14" fill="#EEF4F6" stroke="#6B7D87"/>',
+  sink:   '<rect x="9" y="3" width="22" height="21" rx="2" fill="#F7FAFB" stroke="#6B7D87" stroke-width="1.5"/><rect x="12" y="8" width="16" height="13" rx="5" fill="#C3DAE8" stroke="#6B7D87"/>'
+};
+$('palette').innerHTML = PALETTE.map(t => '<button type="button" class="pal" data-type="'+t+'"><svg viewBox="0 0 40 28" aria-hidden="true">'+ICONS[t]+'</svg>'+TYPES[t].label+'</button>').join('');
+$('palette').addEventListener('pointerdown', e => {
+  const btn = e.target.closest('.pal'); if (!btn || state.step!==1) return;
+  if (e.button && e.button!==0) return;
+  const type = btn.dataset.type;
+  beginDrag(e, btn, {
+    onStart(ev){ showGhost(TYPES[type].label, ev); },
+    onMove(ev){ moveGhost(ev); },
+    onDrop(ev){ if (inside(svg.getBoundingClientRect(), ev.clientX, ev.clientY)) addItem(type, svgPt(ev)); },
+    onTap(){ addItem(type, null); }
+  });
+  e.preventDefault();
+});
+$('palette').addEventListener('click', e => {
+  const btn = e.target.closest('.pal');
+  if (btn && e.detail===0) addItem(btn.dataset.type, null);
+});
+function addItem(type, p){
+  pushHist();
+  const R = state.room;
+  const it = {id:uid(), type, x:R.w/2, y:R.h/2, rot: type==='teacher' ? 180 : 0, flip:false};
+  R.items.push(it);
+  if (p) moveItem(it, p.x, p.y);
+  else if (type==='board') moveItem(it, R.w/2, R.h);
+  else if (type==='door') moveItem(it, R.w, R.h/2);
+  else findFree(it);
+  sel = it.id;
+  renderAll(); persist();
+}
+function removedNote(before){
+  const lost = before - placedCount();
+  if (lost>0) toast(lost===1 ? 'Ein Name ist zurück in der Liste.' : lost + ' Namen sind zurück in der Liste.');
+}
+function rotSel(){
+  const it = findItem(sel); if (!it) return;
+  if (it.type==='board') return;
+  pushHist();
+  if (it.type==='door') it.flip = !it.flip;
+  else { it.rot = (it.rot+90)%360; clampItem(it); }
+  renderAll(); persist();
+}
+function dupSel(){
+  const it = findItem(sel); if (!it) return;
+  pushHist();
+  const R = state.room, c = {id:uid(), type:it.type, x:it.x, y:it.y, rot:it.rot, flip:it.flip};
+  if (TYPES[it.type].wall){
+    c.x += 120; c.y += 120; attachWall(c);
+  } else {
+    const [w,h] = dims(it);
+    const tries = [[w,0],[-w,0],[0,h],[0,-h],[w+20,0],[0,h+40]];
+    let ok = false;
+    for (const [dx,dy] of tries){
+      const x = it.x+dx, y = it.y+dy, b = aabb(it,x,y);
+      if (b.l<0 || b.t<0 || b.r>R.w || b.b>R.h) continue;
+      if (items().some(o => !TYPES[o.type].wall && intersects(shrink(b,1), aabb(o)))) continue;
+      c.x = x; c.y = y; ok = true; break;
+    }
+    if (!ok){ c.x += 20; c.y += 20; clampItem(c); }
+  }
+  R.items.push(c); sel = c.id;
+  renderAll(); persist();
+}
+function delSel(){
+  const it = findItem(sel); if (!it) return;
+  pushHist();
+  const before = placedCount();
+  state.room.items = items().filter(i => i!==it);
+  cleanupAssign(); sel = null;
+  renderAll(); persist(); removedNote(before);
+}
+$('btnRot').addEventListener('click', rotSel);
+$('btnDup').addEventListener('click', dupSel);
+$('btnDel').addEventListener('click', delSel);
+
+$('roomName').addEventListener('input', e => { state.room.name = e.target.value; renderTabs(); persist(); });
+function readMeters(v){ const n = parseFloat(String(v).replace(',', '.')); return isFinite(n) ? n : null; }
+$('roomW').addEventListener('change', e => {
+  const m = readMeters(e.target.value); if (m===null){ syncDims(); return; }
+  const target = clamp(snap(m*100,10), 300, 2000), delta = target - state.room.w;
+  if (!delta){ syncDims(); return; }
+  pushHist();
+  resizeSide('l', -snap(delta/2,10));
+  resizeSide('r', target);
+  renderAll(); persist();
+});
+$('roomH').addEventListener('change', e => {
+  const m = readMeters(e.target.value); if (m===null){ syncDims(); return; }
+  const target = clamp(snap(m*100,10), 300, 2000), delta = state.room.h - target;
+  if (!delta){ syncDims(); return; }
+  pushHist();
+  resizeSide('t', delta);
+  renderAll(); persist();
+});
+[$('roomW'), $('roomH')].forEach(i => i.addEventListener('keydown', e => { if (e.key==='Enter') i.blur(); }));
+
+let genMode = 'rows';
+$('genMode').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  genMode = b.dataset.mode;
+  document.querySelectorAll('#genMode button').forEach(x => x.setAttribute('aria-pressed', String(x===b)));
+  if (genMode==='rows'){ $('genALabel').textContent = 'Reihen'; $('genBLabel').textContent = 'Doppeltische je Reihe'; $('genA').value = 4; $('genB').value = 3; }
+  else { $('genALabel').textContent = 'Inselreihen'; $('genBLabel').textContent = 'Inseln je Reihe (je 4 Plätze)'; $('genA').value = 2; $('genB').value = 3; }
+});
+$('btnGen').addEventListener('click', () => {
+  const a = clamp(parseInt($('genA').value,10)||1, 1, 12), b = clamp(parseInt($('genB').value,10)||1, 1, 10);
+  const R = state.room, W = R.w, H = R.h, dw = TYPES.double.w, dh = TYPES.double.h;
+  pushHist();
+  const before = placedCount();
+  R.items = R.items.filter(i => !isDesk(i.type));
+  const front = R.items.some(i => i.type==='board' || i.type==='teacher') ? 190 : 70;
+  const backTop = 40 + 24;
+  const unitW = dw, unitH = genMode==='rows' ? dh : 2*dh;
+  let gapX = genMode==='rows' ? 50 : 100, gapY = genMode==='rows' ? 95 : 110;
+  const availW = W - 60, availH = H - front - backTop;
+  let blockW = b*unitW + (b-1)*gapX, blockH = a*unitH + (a-1)*gapY;
+  if (blockW>availW && b>1){ gapX = Math.max(0, (availW-b*unitW)/(b-1)); blockW = b*unitW + (b-1)*gapX; }
+  if (blockH>availH && a>1){ gapY = Math.max(60, (availH-a*unitH)/(a-1)); blockH = a*unitH + (a-1)*gapY; }
+  const x0 = (W-blockW)/2 + unitW/2, y0 = backTop + Math.max(0, (availH-blockH)/2) + unitH/2;
+  for (let r=0; r<a; r++) for (let c=0; c<b; c++){
+    const cx = snap(x0 + c*(unitW+gapX), 5), cy = snap(y0 + r*(unitH+gapY), 5);
+    if (genMode==='rows') R.items.push({id:uid(), type:'double', x:cx, y:cy, rot:0, flip:false});
+    else {
+      R.items.push({id:uid(), type:'double', x:cx, y:cy-dh/2, rot:0, flip:false});
+      R.items.push({id:uid(), type:'double', x:cx, y:cy+dh/2, rot:180, flip:false});
+    }
+  }
+  R.items.forEach(clampItem);
+  cleanupAssign(); sel = null;
+  renderAll(); persist();
+  const fits = blockW <= availW+1 && blockH <= availH+1;
+  if (!fits) toast('Die Tische passen nicht ganz hinein. Raum vergrößern oder weniger Tische wählen.');
+  else if (before>placedCount()) removedNote(before);
+  else toast(countSeats() + ' Sitzplätze im Raum.');
+});
+
+/* ---------- Schritt 2: Klasse ---------- */
+$('className').addEventListener('input', e => { state.className = e.target.value; renderTabs(); persist(); });
+$('btnApply').addEventListener('click', () => {
+  const names = parseNames($('names').value);
+  pushHist();
+  const pool = state.students.slice();
+  state.students = names.map(n => {
+    const i = pool.findIndex(s => s.name===n);
+    if (i>=0) return pool.splice(i,1)[0];
+    return {id:uid(), name:n};
+  });
+  cleanupAssign(); selStudent = null;
+  $('names').value = state.students.map(s => s.name).join('\n');
+  renderAll(); persist();
+  toast(state.students.length + ' Namen übernommen.');
+});
+$('pool').addEventListener('pointerdown', e => {
+  const chip = e.target.closest('.chip'); if (!chip) return;
+  if (e.button && e.button!==0) return;
+  const sid = chip.dataset.sid;
+  studentDrag(e, chip, sid, () => { selStudent = selStudent===sid ? null : sid; renderPool(); renderPlan(); });
+  e.preventDefault();
+});
+$('pool').addEventListener('click', e => {
+  const chip = e.target.closest('.chip');
+  if (chip){
+    if (e.detail===0){ const sid = chip.dataset.sid; selStudent = selStudent===sid ? null : sid; renderPool(); renderPlan(); }
+    return;
+  }
+  if (selStudent && seatOfStudent(selStudent)){
+    pushHist(); unassign(selStudent); selStudent = null;
+    renderPlan(); renderPanel(); persist();
+  }
+});
+$('btnRandom').addEventListener('click', () => {
+  const placed = new Set(Object.values(state.assign));
+  const un = state.students.filter(s => !placed.has(s.id)).map(s => s.id);
+  const free = [];
+  for (const it of items()) seatsOf(it).forEach((_,i) => { const k = seatKey(it.id,i); if (!state.assign[k]) free.push(k); });
+  if (!un.length){ toast('Alle haben schon einen Platz.'); return; }
+  if (!free.length){ toast('Es ist kein Platz mehr frei.'); return; }
+  pushHist();
+  const shuffle = a => { for (let i=a.length-1; i>0; i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; };
+  shuffle(un); shuffle(free);
+  const n = Math.min(un.length, free.length);
+  for (let i=0; i<n; i++) state.assign[free[i]] = un[i];
+  selStudent = null;
+  renderAll(); persist();
+  toast(n + (n===1 ? ' Name zufällig gesetzt.' : ' Namen zufällig gesetzt.'));
+});
+$('btnClearSeats').addEventListener('click', e => {
+  if (!placedCount()){ toast('Es sind noch keine Plätze belegt.'); return; }
+  armConfirm(e.currentTarget, 'Wirklich alle leeren?', () => {
+    pushHist(); state.assign = {}; selStudent = null;
+    renderAll(); persist(); toast('Alle Plätze geleert. Rückgängig ist möglich.');
+  });
+});
+
+/* ---------- Schritt 3: Ansicht, Export, Vollbild ---------- */
+[$('viewSeg'), $('viewSeg2')].forEach(seg => seg.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  state.view = b.dataset.view; dropKey = null; renderAll(); persist();
+}));
+$('title').addEventListener('input', e => { state.title = e.target.value; persist(); });
+$('withDate').addEventListener('change', e => { state.withDate = e.target.checked; persist(); });
+
+async function exportCanvas(view){
+  try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch(_){}
+  const R = state.room, portrait = R.h > R.w*1.15;
+  const CW = portrait ? 1980 : 2800, CH = portrait ? 2800 : 1980;
+  const c = document.createElement('canvas'); c.width = CW; c.height = CH;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, CW, CH);
+  const pad = 120;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#17212A'; ctx.font = '700 66px ' + FONT;
+  ctx.fillText(computeTitle(), pad, pad+52);
+  ctx.fillStyle = '#4A5761'; ctx.font = '400 34px ' + FONT;
+  ctx.fillText(viewText(view) + (state.withDate ? '     ' + dateText() : ''), pad, pad+108);
+  const top = pad + 150, avW = CW - 2*pad, avH = CH - top - pad*0.8;
+  const M = 45, sc = buildScene({view, mode:'show'});
+  const scale = Math.min(avW/(R.w+2*M), avH/(R.h+2*M));
+  const x0 = pad + (avW-(R.w+2*M)*scale)/2 + M*scale, y0 = top + (avH-(R.h+2*M)*scale)/2 + M*scale;
+  drawScene(ctx, sc, x0, y0, scale);
+  return c;
+}
+const canvasBlob = (c, type, q) => new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('Bild konnte nicht erzeugt werden')), type, q));
+function makePDF(pages){
+  const enc = new TextEncoder(), chunks = [], offs = [];
+  let len = 0;
+  const push = d => { const b = typeof d==='string' ? enc.encode(d) : d; chunks.push(b); len += b.length; };
+  const obj = (num, body) => { offs[num] = len; push(num + ' 0 obj\n'); body(); push('\nendobj\n'); };
+  push('%PDF-1.4\n%\u00e2\u00e3\u00cf\u00d3\n');
+  obj(1, () => push('<< /Type /Catalog /Pages 2 0 R >>'));
+  obj(2, () => push('<< /Type /Pages /Kids [' + pages.map((_,i) => (3+3*i) + ' 0 R').join(' ') + '] /Count ' + pages.length + ' >>'));
+  pages.forEach((p,i) => {
+    const pn = 3 + 3*i;
+    obj(pn, () => push('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + p.pw + ' ' + p.ph + '] /Resources << /XObject << /Im' + i + ' ' + (pn+2) + ' 0 R >> >> /Contents ' + (pn+1) + ' 0 R >>'));
+    const cs = 'q ' + p.pw + ' 0 0 ' + p.ph + ' 0 0 cm /Im' + i + ' Do Q';
+    obj(pn+1, () => { push('<< /Length ' + cs.length + ' >>\nstream\n'); push(cs); push('\nendstream'); });
+    obj(pn+2, () => { push('<< /Type /XObject /Subtype /Image /Width ' + p.w + ' /Height ' + p.h + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + p.jpeg.length + ' >>\nstream\n'); push(p.jpeg); push('\nendstream'); });
+  });
+  const total = 3 + 3*pages.length, xref = len;
+  let x = 'xref\n0 ' + total + '\n0000000000 65535 f \n';
+  for (let k=1; k<total; k++) x += String(offs[k]).padStart(10,'0') + ' 00000 n \n';
+  push(x);
+  push('trailer\n<< /Size ' + total + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF\n');
+  return new Blob(chunks, {type:'application/pdf'});
+}
+const safeName = s => s.replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim() || 'Sitzplan';
+const viewFile = v => v==='class' ? 'Sicht der Klasse' : 'Sicht Lehrkraft';
+
+let dlCap = null;
+try { if (window.claude && typeof window.claude.use==='function') window.claude.use('downloads').then(d => { dlCap = d; }).catch(() => {}); } catch(_){}
+async function saveFile(name, blob){
+  if (dlCap){
+    try { await dlCap.save({filename:name, data:blob}); toast('Gespeichert: ' + name); return true; }
+    catch(e){
+      const c = e && e.code;
+      if (c==='declined'){ toast('Speichern abgebrochen.'); return false; }
+      if (c==='rate_limited'){ toast('Bitte kurz warten und noch einmal versuchen.'); return false; }
+    }
+  }
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  toast('Heruntergeladen: ' + name);
+  return true;
+}
+let exporting = false;
+document.querySelectorAll('[data-exp]').forEach(btn => btn.addEventListener('click', async () => {
+  if (exporting) return;
+  exporting = true; const old = btn.textContent; btn.textContent = 'Wird erstellt …';
+  try {
+    const kind = btn.dataset.exp, base = safeName(computeTitle());
+    if (kind==='png' || kind==='jpg'){
+      const c = await exportCanvas(state.view);
+      const blob = await canvasBlob(c, kind==='png' ? 'image/png' : 'image/jpeg', 0.93);
+      await saveFile(base + ' – ' + viewFile(state.view) + '.' + kind, blob);
+    } else {
+      const views = kind==='pdf2' ? ['teacher','class'] : [state.view], pages = [];
+      for (const v of views){
+        const c = await exportCanvas(v);
+        const jb = await canvasBlob(c, 'image/jpeg', 0.94);
+        const bytes = new Uint8Array(await jb.arrayBuffer());
+        const land = c.width > c.height;
+        pages.push({jpeg:bytes, w:c.width, h:c.height, pw: land ? 842 : 595, ph: land ? 595 : 842});
+      }
+      await saveFile(kind==='pdf2' ? base + '.pdf' : base + ' – ' + viewFile(state.view) + '.pdf', makePDF(pages));
+    }
+  } catch(err){ toast('Export fehlgeschlagen: ' + ((err && err.message) || err)); }
+  finally { exporting = false; btn.textContent = old; }
+}));
+
+function renderPresent(){
+  $('presentTitle').textContent = computeTitle();
+  $('presentSub').textContent = viewText(state.view) + (state.withDate ? '   ' + dateText() : '');
+  document.querySelectorAll('#presentSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view===state.view)));
+  const R = state.room, M = 45;
+  $('presentSvg').setAttribute('viewBox', [-M, -M, R.w+2*M, R.h+2*M].join(' '));
+  $('presentSvg').innerHTML = sceneSVG(buildScene({view:state.view, mode:'show'}));
+}
+function openPresent(){
+  $('present').hidden = false; renderPresent();
+  const el = $('present'), fn = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (fn){ try { const r = fn.call(el); if (r && r.catch) r.catch(() => {}); } catch(_){} }
+}
+function closePresent(){
+  $('present').hidden = true;
+  const fe = document.fullscreenElement || document.webkitFullscreenElement;
+  if (fe){ const fn = document.exitFullscreen || document.webkitExitFullscreen; try { const r = fn.call(document); if (r && r.catch) r.catch(() => {}); } catch(_){} }
+}
+$('btnPresent').addEventListener('click', openPresent);
+$('presentClose').addEventListener('click', closePresent);
+$('presentSeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  state.view = b.dataset.view; renderAll(); persist();
+});
+
+/* ---------- Speichern, Ablage, Import ---------- */
+function readLib(){
+  try { const v = JSON.parse(localStorage.getItem(LIB_KEY) || 'null'); if (v && Array.isArray(v.raum) && Array.isArray(v.sitzplan)) return v; } catch(_){}
+  return {raum:[], sitzplan:[]};
+}
+function writeLib(lib){ try { localStorage.setItem(LIB_KEY, JSON.stringify(lib)); return true; } catch(_){ return false; } }
+const prefixOf = k => k==='raum' ? 'Raum' : 'Sitzplan';
+function payload(kind, name){
+  const room = JSON.parse(JSON.stringify(state.room));
+  const p = {app:'Sitzplan', format:1, kind, name, savedAt:new Date().toISOString(), room};
+  if (kind==='sitzplan'){
+    Object.assign(p, {className:state.className, students:state.students, assign:state.assign, title:state.title, view:state.view, withDate:state.withDate});
+  }
+  return p;
+}
+function validPayload(p){ return p && (p.kind==='raum' || p.kind==='sitzplan') && p.room && Array.isArray(p.room.items); }
+function untouched(t){ return !t.students.length && !t.room.name.trim() && !t.room.items.some(i => isDesk(i.type)); }
+function loadPayload(p){
+  let newTabbed = false;
+  if (untouched(state)) pushHist();
+  else { const t = freshState(); tabs.push(t); state = t; newTabbed = true; }
+  state.room = sanitizeRoom(p.room);
+  if (p.kind==='raum'){
+    state.assign = {};
+    state.step = 1;
+  } else {
+    Object.assign(state, sanitizePlanParts(p));
+    state.className = String(p.className || p.name || '');
+    state.title = String(p.title || '');
+    state.view = p.view==='class' ? 'class' : 'teacher';
+    state.withDate = p.withDate !== false;
+    cleanupAssign();
+    state.step = 2;
+  }
+  sel = null; selStudent = null; dropKey = null;
+  syncInputs(); renderAll(); persist();
+  return newTabbed;
+}
+function upsert(lib, kind, name, data){
+  const list = lib[kind], i = list.findIndex(e => e.name.toLowerCase()===name.toLowerCase());
+  const entry = {name, savedAt:data.savedAt, data};
+  if (i>=0) list[i] = entry; else list.push(entry);
+}
+
+let saveKind = 'raum';
+function setupSave(){
+  document.querySelectorAll('#saveKind button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.kind===saveKind)));
+  $('savePrefix').textContent = prefixOf(saveKind);
+  $('saveLabel').textContent = saveKind==='raum' ? 'Raumnummer oder Raumname' : 'Klasse oder Kurs';
+  $('saveName').value = saveKind==='raum' ? state.room.name : state.className;
+  $('saveHint').textContent = saveKind==='raum'
+    ? 'Gespeichert wird nur der Raum mit seinen Tischen, ohne Namen. So kannst du ihn für jede Klasse wieder verwenden.'
+    : 'Gespeichert werden Raum, Namensliste und Sitzordnung. Du kannst später daran weiterarbeiten.';
+  updateFileName();
+}
+function updateFileName(){ $('saveFileName').textContent = safeName(prefixOf(saveKind) + ' ' + $('saveName').value.trim()) + '.json'; }
+$('btnSave').addEventListener('click', () => {
+  saveKind = state.step===1 ? 'raum' : 'sitzplan';
+  setupSave(); $('dlgSave').showModal();
+  setTimeout(() => { if (!$('saveName').value) $('saveName').focus(); }, 50);
+});
+$('saveKind').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; saveKind = b.dataset.kind; setupSave(); });
+$('saveName').addEventListener('input', updateFileName);
+$('saveName').addEventListener('keydown', e => { if (e.key==='Enter'){ e.preventDefault(); $('saveOk').click(); } });
+$('saveCancel').addEventListener('click', () => $('dlgSave').close());
+$('saveOk').addEventListener('click', async () => {
+  const name = $('saveName').value.trim();
+  if (!name){ $('saveHint').textContent = saveKind==='raum' ? 'Bitte eine Raumnummer oder einen Raumnamen eintragen.' : 'Bitte die Klasse oder den Kurs eintragen.'; $('saveName').focus(); return; }
+  const toLib = $('saveLib').checked, toFile = $('saveFile').checked;
+  if (!toLib && !toFile){ $('saveHint').textContent = 'Bitte mindestens eine Art des Speicherns wählen.'; return; }
+  if (saveKind==='raum'){ state.room.name = name; $('roomName').value = name; }
+  else { state.className = name; $('className').value = name; }
+  persist(); renderAll();
+  const p = payload(saveKind, name);
+  $('dlgSave').close();
+  let libOk = true;
+  if (toLib){ const lib = readLib(); upsert(lib, saveKind, name, p); libOk = writeLib(lib); }
+  if (toFile) await saveFile(safeName(prefixOf(saveKind) + ' ' + name) + '.json', new Blob([JSON.stringify(p, null, 1)], {type:'application/json'}));
+  else toast(libOk ? '„' + prefixOf(saveKind) + ' ' + name + '“ in der App abgelegt.' : 'Ablage im Browser nicht möglich. Bitte als Datei sichern.');
+  if (toFile && toLib && !libOk) setTimeout(() => toast('Ablage im Browser nicht möglich – die Datei ist deine Sicherung.'), 2800);
+});
+
+let libTab = 'raum';
+function renderLib(){
+  document.querySelectorAll('#libTab button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tab===libTab)));
+  const list = readLib()[libTab].slice().sort((a,b) => a.name.localeCompare(b.name, 'de', {numeric:true}));
+  const pre = prefixOf(libTab);
+  $('libList').innerHTML = list.length ? list.map(e => {
+    const d = e.savedAt ? new Date(e.savedAt).toLocaleDateString('de-DE') : '';
+    return '<li><div class="nm"><b>'+esc(pre+' '+e.name)+'</b><span>'+(d ? 'gespeichert am '+d : '')+'</span></div>'
+      + '<button type="button" class="btn sm primary" data-act="open" data-name="'+esc(e.name)+'">Öffnen</button>'
+      + '<button type="button" class="btn sm" data-act="file" data-name="'+esc(e.name)+'">Als Datei</button>'
+      + '<button type="button" class="btn sm danger" data-act="del" data-name="'+esc(e.name)+'">Löschen</button></li>';
+  }).join('') : '<li class="empty">' + (libTab==='raum'
+    ? 'Noch keine Räume abgelegt. Lege in Schritt 1 einen Raum an und tippe auf „Speichern“.'
+    : 'Noch keine Sitzpläne abgelegt. Verteile in Schritt 2 die Namen und tippe auf „Speichern“.') + '</li>';
+}
+$('btnOpen').addEventListener('click', () => { libTab = state.step===1 ? 'raum' : libTab; renderLib(); $('dlgLib').showModal(); });
+$('libTab').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; libTab = b.dataset.tab; renderLib(); });
+$('libClose').addEventListener('click', () => $('dlgLib').close());
+$('libList').addEventListener('click', e => {
+  const b = e.target.closest('button[data-act]'); if (!b) return;
+  const lib = readLib(), entry = lib[libTab].find(x => x.name===b.dataset.name);
+  if (!entry) return;
+  if (b.dataset.act==='open'){
+    if (!validPayload(entry.data)){ toast('Dieser Eintrag ist beschädigt.'); return; }
+    const nt = loadPayload(entry.data); $('dlgLib').close();
+    toast('„' + prefixOf(libTab) + ' ' + entry.name + '“ ' + (nt ? 'in neuem Tab geöffnet.' : 'geöffnet.'));
+  } else if (b.dataset.act==='file'){
+    saveFile(safeName(prefixOf(libTab) + ' ' + entry.name) + '.json', new Blob([JSON.stringify(entry.data, null, 1)], {type:'application/json'}));
+  } else {
+    armConfirm(b, 'Wirklich löschen?', () => {
+      lib[libTab] = lib[libTab].filter(x => x!==entry); writeLib(lib); renderLib();
+      toast('„' + prefixOf(libTab) + ' ' + entry.name + '“ gelöscht.');
+    });
+  }
+});
+$('btnNewRoom').addEventListener('click', () => { $('dlgLib').close(); newTab(); });
+$('btnImport').addEventListener('click', () => $('fileInput').click());
+$('fileInput').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  try {
+    const p = JSON.parse(await f.text());
+    if (!validPayload(p)) throw new Error('format');
+    const name = String(p.name || (p.kind==='raum' ? p.room.name : p.className) || f.name.replace(/\.json$/i,'')).replace(/^(Raum|Sitzplan)\s+/i, '');
+    const lib = readLib(); upsert(lib, p.kind, name, Object.assign({}, p, {name})); writeLib(lib);
+    const nt = loadPayload(p);
+    if ($('dlgLib').open) $('dlgLib').close();
+    toast('„' + prefixOf(p.kind) + ' ' + name + '“ importiert und ' + (nt ? 'in neuem Tab geöffnet.' : 'geöffnet.'));
+  } catch(_){
+    toast('Diese Datei ist kein Raum und kein Sitzplan aus dieser App.');
+  }
+});
+
+/* ---------- Tabs ---------- */
+function tabLabel(t){
+  const rn = t.room.name.trim(), room = rn ? (/^\d/.test(rn) ? 'Raum ' + rn : rn) : '';
+  const cn = t.className.trim();
+  if (cn && room) return cn + ' – ' + room;
+  return cn || room || 'Neuer Raum';
+}
+function renderTabs(){
+  $('tabbar').innerHTML = tabs.map(t =>
+    '<div class="tab"' + (t===state ? ' data-active' : '') + '>'
+    + '<button type="button" class="tname" data-tabid="' + esc(t.id) + '"' + (t===state ? ' aria-current="page"' : '') + '>' + esc(tabLabel(t)) + '</button>'
+    + '<button type="button" class="tclose" data-close="' + esc(t.id) + '" title="Tab schließen" aria-label="Tab „' + esc(tabLabel(t)) + '“ schließen">×</button></div>'
+  ).join('') + '<button type="button" class="tabadd" id="tabAdd">+ Neuer Raum</button>';
+}
+function resetUi(){ sel = null; selStudent = null; dropKey = null; frozenVB = null; }
+function switchTab(id){
+  const t = tabs.find(x => x.id===id);
+  if (!t || t===state) return;
+  state = t; resetUi(); syncInputs(); renderAll(); persist();
+}
+function newTab(){
+  const t = freshState();
+  tabs.push(t); state = t; resetUi();
+  syncInputs(); renderAll(); persist();
+  const bar = $('tabbar'); bar.scrollLeft = bar.scrollWidth;
+  toast('Neuer Raum in einem eigenen Tab. Deine anderen Pläne bleiben erhalten.');
+}
+function closeTab(id){
+  const i = tabs.findIndex(x => x.id===id);
+  if (i<0) return;
+  const label = tabLabel(tabs[i]);
+  histMap.delete(id);
+  tabs.splice(i, 1);
+  if (!tabs.length) tabs.push(freshState());
+  if (!tabs.includes(state)) state = tabs[Math.min(i, tabs.length-1)];
+  resetUi(); syncInputs(); renderAll(); persist();
+  toast('„' + label + '“ geschlossen.');
+}
+$('tabbar').addEventListener('click', e => {
+  const c = e.target.closest('[data-close]');
+  if (c){ armConfirm(c, 'Schließen?', () => closeTab(c.dataset.close)); return; }
+  const t = e.target.closest('[data-tabid]');
+  if (t){ switchTab(t.dataset.tabid); return; }
+  if (e.target.closest('#tabAdd')) newTab();
+});
+$('btnNewTab').addEventListener('click', newTab);
+
+/* ---------- Navigation und Tastatur ---------- */
+function setStep(n){
+  state.step = n; sel = null; selStudent = null; dropKey = null;
+  renderAll(); persist();
+  const panel = document.querySelector('.panel'); if (panel) panel.scrollTop = 0;
+}
+document.querySelectorAll('.steps button').forEach(b => b.addEventListener('click', () => setStep(Number(b.dataset.step))));
+document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => setStep(Number(b.dataset.go))));
+$('btnUndo').addEventListener('click', undo);
+
+document.addEventListener('keydown', e => {
+  const tag = (e.target && e.target.tagName || '').toLowerCase();
+  const typing = tag==='input' || tag==='textarea';
+  if (!$('present').hidden && e.key==='Escape'){ closePresent(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='z' && !typing){ e.preventDefault(); undo(); return; }
+  if (typing || state.step!==1 || !sel) return;
+  const it = findItem(sel); if (!it) return;
+  if (e.key==='Delete' || e.key==='Backspace'){ e.preventDefault(); delSel(); }
+  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='d'){ e.preventDefault(); dupSel(); }
+  else if (e.key==='r' || e.key==='R'){ rotSel(); }
+  else if (e.key==='Escape'){ sel = null; renderAll(); }
+  else if (e.key.startsWith('Arrow')){
+    e.preventDefault(); pushHist();
+    const s = e.shiftKey ? 50 : 5;
+    const dx = e.key==='ArrowLeft' ? -s : e.key==='ArrowRight' ? s : 0, dy = e.key==='ArrowUp' ? -s : e.key==='ArrowDown' ? s : 0;
+    if (TYPES[it.type].wall){ it.x += dx; it.y += dy; attachWall(it); } else { it.x += dx; it.y += dy; clampItem(it); }
+    renderPlan(); persist();
+  }
+});
+
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { widthCache = new Map(); renderAll(); }).catch(() => {});
+try { localStorage.setItem('sitzplan.v1.test','1'); localStorage.removeItem('sitzplan.v1.test'); }
+catch(_){ $('libNote').textContent = 'In diesem Browser ist keine Ablage möglich. Bitte Räume und Sitzpläne als Datei sichern und importieren.'; }
+
+syncInputs();
+renderAll();
+})();
+</script>
+</body>
+</html>
